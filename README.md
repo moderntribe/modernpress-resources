@@ -1,4 +1,4 @@
-# Moose Resources
+# ModernPress Resources
 
 A collection of resources for use in the Moose Framework
 
