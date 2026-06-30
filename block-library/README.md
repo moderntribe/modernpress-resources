@@ -13,5 +13,6 @@ A collection of custom blocks.
 
 - [Carousel](./carousel/README.md)
 - [Color Theme](./color-theme/README.md)
+- [Faceted Directory (FacetWP)](./faceted-directory/README.md)
 - [Tabs](./tabs/README.md)
 - [Terms](./terms/README.md)
