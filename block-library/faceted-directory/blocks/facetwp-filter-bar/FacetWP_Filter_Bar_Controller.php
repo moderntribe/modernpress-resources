@@ -7,30 +7,35 @@ use Tribe\Plugin\Components\Abstracts\Abstract_Block_Controller;
 class FacetWP_Filter_Bar_Controller extends Abstract_Block_Controller {
 
 	/**
+	 * Facet types that are not wrapped in accordions when filter bar position is sidebar.
+	 *
+	 * @var array<string>
+	 */
+	private const ACCORDION_EXCLUDED_TYPES = [ 'search', 'reset' ];
+
+	/**
+	 * Facet types that should not have a label displayed.
+	 *
+	 * @var array<string>
+	 */
+	private const NO_LABEL_TYPES = [ 'reset' ];
+
+	/**
+	 * Block context key for filter bar position from the parent archive block.
+	 */
+	private const string FILTER_BAR_POSITION_CONTEXT = 'tribe/facetwp-archive/filterBarPosition';
+
+	/**
 	 * @var array <mixed>
 	 */
 	protected array $facets;
 	protected string $filter_bar_position;
 
-	/**
-	 * Facet types that are not wrapped in accordions when filter bar position is sidebar.
-	 *
-	 * @var array <string>
-	 */
-	protected array $accordion_excluded_types = [ 'search', 'reset' ];
-
-	/**
-	 * Facet types that should not have a label displayed.
-	 *
-	 * @var array <string>
-	 */
-	protected array $no_label_types = [ 'reset' ];
-
 	public function __construct( array $args = [] ) {
 		parent::__construct( $args );
 
 		$this->facets              = $this->attributes['facets'] ?? [];
-		$this->filter_bar_position = $this->context['tribe/facetwp-archive/filterBarPosition'] ?? 'top';
+		$this->filter_bar_position = $this->context[ self::FILTER_BAR_POSITION_CONTEXT ] ?? 'top';
 	}
 
 	/**
@@ -59,11 +64,11 @@ class FacetWP_Filter_Bar_Controller extends Abstract_Block_Controller {
 	public function should_hide_facet_label( array $facet ): bool {
 		$type = strtolower( $facet['type'] ?? '' );
 
-		return in_array( $type, $this->no_label_types, true );
+		return in_array( $type, self::NO_LABEL_TYPES, true );
 	}
 
 	/**
-	 * Whether this facet should be wrapped in a details/summary accordion (sidebar, excluding $accordion_excluded_types).
+	 * Whether this facet should be wrapped in a details/summary accordion (sidebar, excluding ACCORDION_EXCLUDED_TYPES).
 	 *
 	 * @param array $facet
 	 */
@@ -74,7 +79,7 @@ class FacetWP_Filter_Bar_Controller extends Abstract_Block_Controller {
 
 		$type = strtolower( $facet['type'] ?? '' );
 
-		return ! in_array( $type, $this->accordion_excluded_types, true );
+		return ! in_array( $type, self::ACCORDION_EXCLUDED_TYPES, true );
 	}
 
 	/**
@@ -103,7 +108,7 @@ class FacetWP_Filter_Bar_Controller extends Abstract_Block_Controller {
 			 * we can use the same types to determine if the current facet should
 			 * receive a grid slot.
 			 */
-			if ( in_array( $facet_type, $this->accordion_excluded_types, true ) ) {
+			if ( in_array( $facet_type, self::ACCORDION_EXCLUDED_TYPES, true ) ) {
 				continue;
 			}
 

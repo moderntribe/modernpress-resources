@@ -43,7 +43,8 @@ Use this table as the source of truth for where each file in this directory belo
 | `theme.json.snippet.json` | Merge into `wp-content/themes/core/theme.json` → `settings.animationExcludes` |
 | `blocks/facetwp-archive/*` (except controller) | `wp-content/themes/core/blocks/tribe/facetwp-archive/` |
 | `blocks/facetwp-archive/FacetWP_Archive_Controller.php` | `wp-content/plugins/core/src/Components/Blocks/FacetWP_Archive_Controller.php` |
-| `blocks/facetwp-filter-bar/*` (except controller) | `wp-content/themes/core/blocks/tribe/facetwp-filter-bar/` |
+| `blocks/facetwp-filter-bar/*` (except controller and `components/`) | `wp-content/themes/core/blocks/tribe/facetwp-filter-bar/` |
+| `blocks/facetwp-filter-bar/components/*` | `wp-content/themes/core/components/filter-bar/` |
 | `blocks/facetwp-filter-bar/FacetWP_Filter_Bar_Controller.php` | `wp-content/plugins/core/src/Components/Blocks/FacetWP_Filter_Bar_Controller.php` |
 | `blocks/facetwp-grid/*` (except controller) | `wp-content/themes/core/blocks/tribe/facetwp-grid/` |
 | `blocks/facetwp-grid/FacetWP_Grid_Controller.php` | `wp-content/plugins/core/src/Components/Blocks/FacetWP_Grid_Controller.php` |
@@ -86,13 +87,28 @@ blocks/facetwp-grid/FacetWP_Grid_Controller.php
 
 #### 4. Copy block source files
 
-Copy each block directory **without** the controller PHP files:
+Copy each block directory **without** the controller PHP files or filter bar template parts:
 
 ```text
 blocks/facetwp-archive/   → wp-content/themes/core/blocks/tribe/facetwp-archive/
 blocks/facetwp-filter-bar/ → wp-content/themes/core/blocks/tribe/facetwp-filter-bar/
 blocks/facetwp-grid/      → wp-content/themes/core/blocks/tribe/facetwp-grid/
 ```
+
+Copy the filter bar template parts into the theme components directory:
+
+```text
+blocks/facetwp-filter-bar/components/
+  → wp-content/themes/core/components/filter-bar/
+```
+
+These template parts are loaded via `get_template_part()` from `render.php`:
+
+| Template part | Purpose |
+| --- | --- |
+| `components/filter-bar/top.php` | Top filter bar layout |
+| `components/filter-bar/sidebar.php` | Sidebar filter bar flyout layout |
+| `components/filter-bar/facets.php` | Shared facet markup used by both layouts |
 
 #### 5. Merge snippet files
 
@@ -153,10 +169,11 @@ If you are an AI agent merging this component into ModernPress, follow these rul
 3. Copy files verbatim where the map shows a direct copy. Do not rename classes or namespaces.
 4. For `.snippet` files, merge only the described changes into the target file. Do not replace entire target files unless the project does not already contain conflicting integration code.
 5. Move controller PHP files out of `blocks/*/` into `wp-content/plugins/core/src/Components/Blocks/`. Do not leave controllers in the theme block directories.
-6. Do **not** copy the FacetWP plugin itself. It must be installed separately by the project team.
-7. Do **not** modify `wp-content/plugins/core/src/Blocks/Block_Base.php` or `Blocks_Subscriber.php` unless the target project explicitly requires asset-loading changes outside the scope of this component.
-8. After all file operations, run `npm run dist` from the ModernPress project root.
-9. Report any merge conflicts (especially in `integrations/_variables.pcss`, `Integrations_Subscriber.php`, or `theme.json`) rather than silently overwriting unrelated project customizations.
+6. Copy `blocks/facetwp-filter-bar/components/` to `wp-content/themes/core/components/filter-bar/`. Do not leave these template parts in the block directory after merge.
+7. Do **not** copy the FacetWP plugin itself. It must be installed separately by the project team.
+8. Do **not** modify `wp-content/plugins/core/src/Blocks/Block_Base.php` or `Blocks_Subscriber.php` unless the target project explicitly requires asset-loading changes outside the scope of this component.
+9. After all file operations, run `npm run dist` from the ModernPress project root.
+10. Report any merge conflicts (especially in `integrations/_variables.pcss`, `Integrations_Subscriber.php`, or `theme.json`) rather than silently overwriting unrelated project customizations.
 
 ---
 
