@@ -53,14 +53,29 @@ class Location_Map_Block_Controller extends Abstract_Block_Controller {
 		$this->location_data = $location_data;
 		$this->maps_config   = $maps_config;
 
+		$this->set_source_attributes();
+		$this->set_display_attributes();
+		$this->set_map_attributes();
+		$this->add_height_class();
+		$this->resolve_display_options();
+		$this->add_layout_classes();
+	}
+
+	private function set_source_attributes(): void {
 		$this->location_source     = $this->attributes['locationSource'] ?? self::SOURCE_MANUAL;
 		$this->chosen_locations    = $this->attributes['chosenLocations'] ?? [];
 		$this->endpoint_url        = $this->attributes['endpointUrl'] ?? '';
+	}
+
+	private function set_display_attributes(): void {
 		$this->show_sidebar        = (bool) ( $this->attributes['showSidebar'] ?? true );
 		$this->show_location_cards = (bool) ( $this->attributes['showLocationCards'] ?? false );
 		$this->map_position        = $this->get_map_position();
 		$this->show_search         = (bool) ( $this->attributes['showSearch'] ?? true );
 		$this->show_location_list  = (bool) ( $this->attributes['showLocationList'] ?? true );
+	}
+
+	private function set_map_attributes(): void {
 		$this->search_radius       = absint( $this->attributes['searchRadius'] ?? 30 );
 		$this->default_lat         = (float) ( $this->attributes['defaultLat'] ?? 39.10015 );
 		$this->default_lng         = (float) ( $this->attributes['defaultLng'] ?? -94.58327 );
@@ -69,38 +84,47 @@ class Location_Map_Block_Controller extends Abstract_Block_Controller {
 		$this->cluster_markers     = (bool) ( $this->attributes['clusterMarkers'] ?? true );
 		$this->map_height_mode     = $this->get_map_height_mode();
 		$this->map_height          = absint( $this->attributes['mapHeight'] ?? 600 );
+	}
 
+	private function add_height_class(): void {
 		if ( self::HEIGHT_VIEWPORT === $this->map_height_mode && ! $this->show_location_cards ) {
 			$this->block_classes .= ' b-location-map--viewport-height';
 		}
+	}
 
+	private function resolve_display_options(): void {
 		if ( ! $this->show_sidebar ) {
 			$this->show_search        = false;
 			$this->show_location_list = false;
-		} else {
-			$this->show_location_cards = false;
+
+			return;
 		}
 
-		if ( $this->show_search && ! $this->show_location_list ) {
+		$this->show_location_cards = false;
+
+		if ( $this->show_search ) {
 			$this->show_location_list = true;
 		}
+	}
 
+	private function add_layout_classes(): void {
 		if ( $this->show_sidebar ) {
 			$this->block_classes .= ' b-location-map--has-sidebar';
 		} elseif ( $this->show_location_cards ) {
 			$this->block_classes .= ' b-location-map--has-cards';
-			$this->block_classes .= self::MAP_POSITION_RIGHT === $this->map_position
-				? ' b-location-map--map-right'
-				: ' b-location-map--map-left';
+
+			if ( self::MAP_POSITION_RIGHT === $this->map_position ) {
+				$this->block_classes .= ' b-location-map--map-right';
+			} else {
+				$this->block_classes .= ' b-location-map--map-left';
+			}
 		} else {
 			$this->block_classes .= ' b-location-map--map-only';
 		}
 
-		if ( ! $this->show_search ) {
-			return;
+		if ( $this->show_search ) {
+			$this->block_classes .= ' b-location-map--has-search';
 		}
-
-		$this->block_classes .= ' b-location-map--has-search';
 	}
 
 	public function should_bail_early(): bool {
