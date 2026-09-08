@@ -1,0 +1,6 @@
+{
+	"_comment": "Add to `dependencies` in the ModernPress root package.json, then run `npm install`. Used by the location map block for marker clustering.",
+	"dependencies": {
+		"@googlemaps/markerclusterer": "^2.6.2"
+	}
+}
