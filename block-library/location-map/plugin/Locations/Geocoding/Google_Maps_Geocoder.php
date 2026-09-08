@@ -40,6 +40,39 @@ class Google_Maps_Geocoder implements Geocoder_Interface {
 			return null;
 		}
 
+		$response = $this->request_geocode( $address, $api_key );
+
+		if ( null === $response ) {
+			return null;
+		}
+
+		if ( 'ZERO_RESULTS' === ( $response['status'] ?? '' ) ) {
+			set_transient( $cache_key, [], self::CACHE_TTL );
+
+			return null;
+		}
+
+		$result = $this->get_valid_result( $response );
+
+		if ( null === $result ) {
+			return null;
+		}
+
+		$coordinates = [
+			'lat'    => $result['lat'],
+			'lng'    => $result['lng'],
+			'search' => $this->search_resolver->from_geocode_result( $result['data'] ),
+		];
+
+		set_transient( $cache_key, $coordinates, self::CACHE_TTL );
+
+		return $coordinates;
+	}
+
+	/**
+	 * @return array<string, mixed>|null
+	 */
+	private function request_geocode( string $address, string $api_key ): ?array {
 		$url = add_query_arg(
 			[
 				'address'    => $address,
@@ -67,36 +100,45 @@ class Google_Maps_Geocoder implements Geocoder_Interface {
 			return null;
 		}
 
-		$body   = json_decode( (string) wp_remote_retrieve_body( $response ), true );
-		$status = (string) ( $body['status'] ?? '' );
+		$body = json_decode( (string) wp_remote_retrieve_body( $response ), true );
 
-		$result = $body['results'][0] ?? null;
-		$lat    = $result['geometry']['location']['lat'] ?? null;
-		$lng    = $result['geometry']['location']['lng'] ?? null;
+		return is_array( $body ) ? $body : null;
+	}
 
-		if (
-			! is_array( $body )
-			|| 'OK' !== $status
-			|| ! is_array( $result )
-			|| ! is_numeric( $lat )
-			|| ! is_numeric( $lng )
-		) {
-			if ( 'ZERO_RESULTS' === $status ) {
-				set_transient( $cache_key, [], self::CACHE_TTL );
-			}
-
+	/**
+	 * @param array<string, mixed> $response
+	 *
+	 * @return array{data: array<string, mixed>, lat: float, lng: float}|null
+	 */
+	private function get_valid_result( array $response ): ?array {
+		if ( 'OK' !== ( $response['status'] ?? '' ) ) {
 			return null;
 		}
 
-		$coordinates = [
-			'lat'    => (float) $lat,
-			'lng'    => (float) $lng,
-			'search' => $this->search_resolver->from_geocode_result( $result ),
+		$result = $response['results'][0] ?? null;
+
+		if ( ! is_array( $result ) ) {
+			return null;
+		}
+
+		$location = $result['geometry']['location'] ?? null;
+
+		if ( ! is_array( $location ) ) {
+			return null;
+		}
+
+		$lat = $location['lat'] ?? null;
+		$lng = $location['lng'] ?? null;
+
+		if ( ! is_numeric( $lat ) || ! is_numeric( $lng ) ) {
+			return null;
+		}
+
+		return [
+			'data' => $result,
+			'lat'  => (float) $lat,
+			'lng'  => (float) $lng,
 		];
-
-		set_transient( $cache_key, $coordinates, self::CACHE_TTL );
-
-		return $coordinates;
 	}
 
 }

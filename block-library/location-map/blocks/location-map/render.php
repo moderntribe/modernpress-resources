@@ -19,16 +19,7 @@ $search_input_id      = wp_unique_id( 'location-map-search-' );
 $autocomplete_list_id = wp_unique_id( 'location-map-autocomplete-' );
 $show_autocomplete    = $c->should_show_autocomplete();
 ?>
-<section
-	<?php
-	echo get_block_wrapper_attributes( [
-		'class'              => esc_attr( $c->get_block_classes() ),
-		'style'              => esc_attr( trim( $c->get_block_styles() . ' ' . $c->get_map_height_style() ) ),
-		'data-map-settings'  => esc_attr( $c->get_map_settings_json() ),
-		'data-map-locations' => esc_attr( $c->should_render_initial_locations() ? $c->get_initial_locations_json() : '[]' ),
-	] );
-	?>
->
+<section <?php echo $c->get_wrapper_attributes(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
 	<div class="b-location-map__grid">
 		<?php if ( $c->should_show_sidebar() ) : ?>
 			<div class="b-location-map__sidebar">

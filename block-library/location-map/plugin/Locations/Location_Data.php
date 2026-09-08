@@ -139,13 +139,13 @@ class Location_Data {
 				[
 					'key'     => Location_Meta::LATITUDE,
 					'value'   => [ $bounds['min_lat'], $bounds['max_lat'] ],
-					'type'    => 'DECIMAL',
+					'type'    => 'DECIMAL(10,6)',
 					'compare' => 'BETWEEN',
 				],
 				[
 					'key'     => Location_Meta::LONGITUDE,
 					'value'   => [ $bounds['min_lng'], $bounds['max_lng'] ],
-					'type'    => 'DECIMAL',
+					'type'    => 'DECIMAL(10,6)',
 					'compare' => 'BETWEEN',
 				],
 			],
@@ -368,11 +368,29 @@ class Location_Data {
 	private function get_coordinate( int $post_id, string $key ): ?float {
 		$value = $this->get_field( $post_id, $key );
 
-		if ( $value === '' || $value === null || $value === false ) {
+		if ( ! is_numeric( $value ) ) {
 			return null;
 		}
 
-		return (float) $value;
+		$coordinate = (float) $value;
+
+		if ( ! $this->is_valid_coordinate( $coordinate, $key ) ) {
+			return null;
+		}
+
+		return $coordinate;
+	}
+
+	private function is_valid_coordinate( float $coordinate, string $key ): bool {
+		if ( ! is_finite( $coordinate ) ) {
+			return false;
+		}
+
+		return match ( $key ) {
+			Location_Meta::LATITUDE  => $coordinate >= -90.0 && $coordinate <= 90.0,
+			Location_Meta::LONGITUDE => $coordinate >= -180.0 && $coordinate <= 180.0,
+			default                  => false,
+		};
 	}
 
 }

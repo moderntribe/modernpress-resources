@@ -135,7 +135,22 @@ class Location_Map_Block_Controller extends Abstract_Block_Controller {
 		return $this->show_location_cards;
 	}
 
-	public function get_map_height_style(): string {
+	public function get_wrapper_attributes(): string {
+		$locations = [];
+
+		if ( self::SOURCE_ENDPOINT !== $this->location_source ) {
+			$locations = $this->get_initial_locations();
+		}
+
+		return get_block_wrapper_attributes( [
+			'class'              => $this->get_block_classes(),
+			'style'              => trim( $this->get_block_styles() . ' ' . $this->get_map_height_style() ),
+			'data-map-settings'  => wp_json_encode( $this->get_map_settings() ) ?: '{}',
+			'data-map-locations' => wp_json_encode( $locations ) ?: '[]',
+		] );
+	}
+
+	private function get_map_height_style(): string {
 		if ( $this->show_location_cards || self::HEIGHT_VIEWPORT === $this->map_height_mode ) {
 			return '';
 		}
@@ -146,7 +161,7 @@ class Location_Map_Block_Controller extends Abstract_Block_Controller {
 	/**
 	 * @return array<string, mixed>
 	 */
-	public function get_map_settings(): array {
+	private function get_map_settings(): array {
 		return [
 			'locationSource'       => $this->location_source,
 			'endpointUrl'          => $this->get_locations_endpoint_url(),
@@ -170,14 +185,10 @@ class Location_Map_Block_Controller extends Abstract_Block_Controller {
 		];
 	}
 
-	public function get_map_settings_json(): string {
-		return wp_json_encode( $this->get_map_settings() ) ?: '{}';
-	}
-
 	/**
 	 * @return array<int, array<string, mixed>>
 	 */
-	public function get_initial_locations(): array {
+	private function get_initial_locations(): array {
 		if ( self::SOURCE_MANUAL === $this->location_source ) {
 			$post_ids = array_map(
 				static fn( array $location ): int => absint( $location['id'] ?? 0 ),
@@ -200,14 +211,6 @@ class Location_Map_Block_Controller extends Abstract_Block_Controller {
 		}
 
 		return [];
-	}
-
-	public function get_initial_locations_json(): string {
-		return wp_json_encode( $this->get_initial_locations() ) ?: '[]';
-	}
-
-	public function should_render_initial_locations(): bool {
-		return self::SOURCE_ENDPOINT !== $this->location_source;
 	}
 
 	private function get_map_height_mode(): string {
