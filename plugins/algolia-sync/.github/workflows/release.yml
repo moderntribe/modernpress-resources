@@ -1,0 +1,55 @@
+name: 'Release'
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    env:
+      BUILD_FOLDER: build
+      PLUGIN_SLUG: algolia-sync
+
+    steps:
+      - name: Setup PHP with composer and extensions.
+        uses: shivammathur/setup-php@2.22.0
+        with:
+          tools: composer, wp
+          php-version: 8.1
+
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+        with:
+          path: ${{ env.BUILD_FOLDER }}
+          ref: ${{ github.ref }}
+
+      - name: Initialize Composer
+        run: |
+          cd ${{ env.BUILD_FOLDER }}
+          composer install --no-dev --optimize-autoloader
+
+      - name: Configure WP-CLI dist-archive-command
+        run: |
+          cd ${{ env.BUILD_FOLDER }}
+          wp package install wp-cli/dist-archive-command:^3.1
+
+      - name: Build Plugin Zip
+        run: |
+          wp dist-archive ${{ env.BUILD_FOLDER }} --plugin-dirname=${{ env.PLUGIN_SLUG }} --force
+
+      - name: Save to Release
+        uses: xresloader/upload-to-github-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          file: "${{ env.PLUGIN_SLUG }}.*.zip"
+          tags: true
+          draft: false
+          overwrite: true
+          tag_name: ${{ github.ref_name }}
