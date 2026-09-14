@@ -1,0 +1,12 @@
+.git
+.github
+.gitignore
+.distignore
+.editorconfig
+.idea
+.vscode
+composer.json
+composer.lock
+bin/
+dist/
+.build/

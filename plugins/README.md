@@ -11,5 +11,6 @@ A collection of plugins and core plugin resources for the Moose / ModernPress fr
 
 ## Plugin Collection
 
+- [Algolia Sync](./algolia-sync/README.md) — full sync via recursive admin AJAX (no Action Scheduler)
 - [Core CLI](./core/src/CLI/README.md)
 - [Tribe Migration](./tribe-migration/README.md)
