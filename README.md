@@ -20,6 +20,12 @@ A collection of block editor level scripts (global, not tied to a block).
 
 A collection of block filters that override front end markup for a block.
 
+## Plugins
+
+[plugins/README.md](./plugins/README.md)
+
+A collection of plugins and core plugin resources.
+
 ## GitHub Action Workflow Deploys
 
 [workflows/README.md](./workflows/README.md)
