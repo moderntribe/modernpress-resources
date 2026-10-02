@@ -1,0 +1,16 @@
+/**
+ * Merge the entries below into `wp-content/themes/core/assets/pcss/icons/_variables.pcss`.
+ * Add them in alphabetical order with the existing icons. Do not modify existing icons.
+ */
+
+/* Add to the `@svg-load` block: */
+@svg-load keyboard-return url(keyboard-return.svg);
+@svg-load map-pin url(map-pin.svg);
+@svg-load my-location url(my-location.svg);
+
+/* Add to the `:root` block: */
+:root {
+	--icon-keyboard-return: svg-inline(keyboard-return);
+	--icon-map-pin: svg-inline(map-pin);
+	--icon-my-location: svg-inline(my-location);
+}
