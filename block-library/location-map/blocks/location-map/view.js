@@ -242,31 +242,33 @@ const showResultsMessage = (
 	const { settings } = getBlockState( block );
 	const label = locationName || getAreaSearchLabel( search );
 
+	let message = sprintf(
+		/* translators: 1: location count, 2: search radius in miles, 3: searched place name */
+		__( 'Found %1$d locations within %2$d miles of %3$s.', 'tribe' ),
+		count,
+		settings.searchRadius || 30,
+		label
+	);
+
 	if ( search.mode === 'area' ) {
-		if ( search.scope === 'zip' ) {
-			results.textContent = sprintf(
-				/* translators: 1: location count, 2: ZIP code */
-				__( 'Found %1$d locations in ZIP code %2$s.', 'tribe' ),
-				count,
-				label
-			);
-		} else {
-			results.textContent = sprintf(
-				/* translators: 1: location count, 2: searched place name */
-				__( 'Found %1$d locations in %2$s.', 'tribe' ),
-				count,
-				label
-			);
-		}
-	} else {
-		results.textContent = sprintf(
-			/* translators: 1: location count, 2: search radius in miles, 3: searched place name */
-			__( 'Found %1$d locations within %2$d miles of %3$s.', 'tribe' ),
+		message = sprintf(
+			/* translators: 1: location count, 2: searched place name */
+			__( 'Found %1$d locations in %2$s.', 'tribe' ),
 			count,
-			settings.searchRadius || 30,
 			label
 		);
 	}
+
+	if ( search.mode === 'area' && search.scope === 'zip' ) {
+		message = sprintf(
+			/* translators: 1: location count, 2: ZIP code */
+			__( 'Found %1$d locations in ZIP code %2$s.', 'tribe' ),
+			count,
+			label
+		);
+	}
+
+	results.textContent = message;
 
 	openMobileLocationList( block );
 	setMessageVisibility( results, true );
@@ -293,23 +295,25 @@ const showNoResultsMessage = (
 	const { settings } = getBlockState( block );
 	const label = locationName || getAreaSearchLabel( search );
 
+	let message = sprintf(
+		/* translators: 1: search radius in miles, 2: searched place name */
+		__(
+			'Sorry, no locations were found within %1$d miles of %2$s.',
+			'tribe'
+		),
+		settings.searchRadius || 30,
+		label
+	);
+
 	if ( search.mode === 'area' ) {
-		noResults.textContent = sprintf(
+		message = sprintf(
 			/* translators: %s: searched place name */
 			__( 'Sorry, no locations were found in %s.', 'tribe' ),
 			label
 		);
-	} else {
-		noResults.textContent = sprintf(
-			/* translators: 1: search radius in miles, 2: searched place name */
-			__(
-				'Sorry, no locations were found within %1$d miles of %2$s.',
-				'tribe'
-			),
-			settings.searchRadius || 30,
-			label
-		);
 	}
+
+	noResults.textContent = message;
 
 	openMobileLocationList( block );
 	setMessageVisibility( noResults, true );
@@ -419,12 +423,8 @@ const renderLocations = async (
 		onMarkerClick: ( _marker, index ) => handleMarkerClick( block, index ),
 	} );
 
-	if ( locations.length ) {
-		if ( blockState.settings.fitBounds ) {
-			fitMapToLocations( blockState.map, locations );
-		} else if ( searchCenter ) {
-			focusMap( blockState.map, searchCenter.lat, searchCenter.lng, 11 );
-		}
+	if ( locations.length && blockState.settings.fitBounds ) {
+		fitMapToLocations( blockState.map, locations );
 	} else if ( searchCenter ) {
 		focusMap( blockState.map, searchCenter.lat, searchCenter.lng, 11 );
 	}
