@@ -1,0 +1,19 @@
+{
+	"name": "moderntribe/algolia-sync",
+	"description": "Sync selected post types to specified Algolia indexes",
+	"type": "wordpress-plugin",
+	"license": "GPL-2.0-or-later",
+	"require": {
+		"php": ">=8.1",
+		"algolia/algoliasearch-client-php": "^4.0"
+	},
+	"autoload": {
+		"psr-4": {
+			"Tribe\\Algolia_Sync\\": "src/"
+		}
+	},
+	"config": {
+		"sort-packages": true,
+		"optimize-autoloader": true
+	}
+}

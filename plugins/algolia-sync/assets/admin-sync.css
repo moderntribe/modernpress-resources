@@ -1,0 +1,63 @@
+.tribe-algolia-sync-warning {
+	margin: 1em 0;
+	padding: 12px 14px;
+	border-left: 4px solid #dba617;
+	background: #fcf9e8;
+}
+
+.tribe-algolia-sync-warning.is-running {
+	border-left-color: #d63638;
+	background: #fcf0f1;
+}
+
+.tribe-algolia-sync-status {
+	margin-top: 1.5em;
+	padding: 1em;
+	border: 1px solid #c3c4c7;
+	background: #fff;
+	max-width: 640px;
+}
+
+.tribe-algolia-sync-status.is-failed {
+	border-color: #d63638;
+}
+
+.tribe-algolia-sync-status-error {
+	color: #b32d2e;
+}
+
+.tribe-algolia-sync-log {
+	margin: 0;
+	max-height: 260px;
+	overflow-y: auto;
+	border: 1px solid #dcdcde;
+	padding: 8px 12px;
+	background: #f6f7f7;
+	font-family: Menlo, Consolas, monospace;
+	font-size: 12px;
+}
+
+.tribe-algolia-sync-log li {
+	margin: 0 0 4px;
+}
+
+.tribe-algolia-sync-log-time {
+	color: #646970;
+	margin-right: 8px;
+}
+
+.tribe-algolia-sync-log-error {
+	color: #b32d2e;
+}
+
+.tribe-algolia-sync-index-row {
+	margin-bottom: 0.75em;
+}
+
+.tribe-algolia-sync-index-row .tribe-algolia-sync-index-input {
+	margin-right: 0.5em;
+}
+
+.tribe-algolia-sync-reset {
+	margin-top: 1em;
+}

@@ -1,0 +1,59 @@
+# OS generated files #
+######################
+
+.DS_Store*
+ehthumbs.db
+._*
+*~
+.svn
+.cvs
+*.bak
+*.swp
+Thumbs.db
+.DS_Store
+.idea
+pimple.json
+
+# IDE generated files #
+######################
+.vscode/*
+!.vscode/extensions.json
+*.code-workspace
+
+# Vim generated files #
+#######################
+
+*.un~
+
+############################################
+# Ignore some other system generated files #
+############################################
+*.com
+*.class
+*.dll
+*.exe
+*.o
+*.so
+*.7z
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+*.log
+*.sql
+*.sqlite
+.Spotlight-V100
+.Trashes
+.codekit-cache
+.sass-cache
+# Sublime
+*.sublime-project
+*.sublime-workspace
+# PhpStorm
+.idea/
+vendor/
+.build/
+dist/
+
