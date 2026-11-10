@@ -1,0 +1,105 @@
+name: 'SSH Release Rollback'
+
+# Manual only. Repoints the `current` symlink at a previous release. Runs the
+# rollback.sh that moderntribe/actions/deploy/ssh-deploy ships to the server on
+# every deploy, so at least one deploy must have run before this can be used.
+#
+# Copy to .github/workflows/ next to ssh-release-deploy.yml and see ./README.md.
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        required: true
+        default: Production
+        type: choice
+        options:
+          - Production
+          - Staging
+      release-id:
+        description: 'Release id to roll back to (blank = previous release)'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+# Same group as the deploy workflow: a rollback never overlaps a deploy.
+concurrency:
+  group: ssh-deploy-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Validate release id
+        env:
+          RELEASE_ID: ${{ inputs.release-id }}
+        run: |
+          [[ -z "$RELEASE_ID" || "$RELEASE_ID" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{2}-[0-9]{2}-[0-9]{2}$ ]] \
+            || { echo "::error::release-id must look like 2026-10-02_18-58-31"; exit 1; }
+
+      - name: Setup SSH key
+        uses: moderntribe/actions/utils/ssh-agent@v1
+        with:
+          ssh_private_key: ${{ secrets.SSH_KEY }}
+
+      - name: Pin host key
+        env:
+          KNOWN_HOSTS: ${{ vars.SSH_KNOWN_HOSTS }}
+        run: |
+          [ -n "$KNOWN_HOSTS" ] || { echo "::error::SSH_KNOWN_HOSTS is not set on this environment"; exit 1; }
+          mkdir -p /home/runner/.ssh
+          printf '%s\n' "$KNOWN_HOSTS" > /home/runner/.ssh/known_hosts
+
+      - name: Roll back current release
+        env:
+          SSH: "ssh -p ${{ secrets.SSH_PORT || '22' }} -o StrictHostKeyChecking=yes"
+          HOST: "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}"
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          RELEASE_ID: ${{ inputs.release-id }}
+        run: |
+          echo "### Rollback" >> "$GITHUB_STEP_SUMMARY"
+          $SSH "$HOST" "bash '$DEPLOY_PATH/rollback.sh' '$DEPLOY_PATH' '$RELEASE_ID'" \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+
+      # Data cached by the newer release can break the older code. Same guard as
+      # the post-deploy-command in ssh-release-deploy.yml.
+      # PROJECT: remove or replace if the project does not use Redis.
+      - name: Flush object cache
+        continue-on-error: true
+        env:
+          SSH: "ssh -p ${{ secrets.SSH_PORT || '22' }} -o StrictHostKeyChecking=yes"
+          HOST: "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}"
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+        run: |
+          $SSH "$HOST" "cd '$DEPLOY_PATH/current' && bash -se" <<'EOF'
+          if wp eval 'exit( defined( "WP_REDIS_DISABLED" ) && WP_REDIS_DISABLED ? 0 : 1 );' < /dev/null; then
+            echo "Redis is disabled; skipping cache flush"
+          elif wp eval 'exit( defined( "WP_REDIS_PREFIX" ) && WP_REDIS_PREFIX && defined( "WP_REDIS_SELECTIVE_FLUSH" ) && WP_REDIS_SELECTIVE_FLUSH ? 0 : 1 );' < /dev/null; then
+            wp cache flush < /dev/null
+          else
+            echo "::warning::WP_REDIS_PREFIX or WP_REDIS_SELECTIVE_FLUSH is not set; skipped cache flush"
+            exit 1
+          fi
+          EOF
+
+  notify:
+    needs: rollback
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Slack Notification
+        uses: moderntribe/actions/utils/slack-message-deploy@v1
+        with:
+          branch: ${{ inputs.release-id || 'previous release' }}
+          environment: ${{ inputs.environment }} (rollback)
+          slack_webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+          app_url: ${{ vars.SITE_URL || format('{0}/{1}/actions/runs/{2}', github.server_url, github.repository, github.run_id) }}
+          gha_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          status: ${{ needs.rollback.result }}
