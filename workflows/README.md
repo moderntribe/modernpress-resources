@@ -10,5 +10,6 @@ A collection of deployment workflows using GitHub Actions.
 ## Workflow Collection
 
 - [WP Engine](./wpengine/README.md)
+- [SSH Release Deploy and Rollback](./ssh-release/README.md) (Nexcess and other SSH-only hosts)
 - [Lighthouse](./lighthouse/README.md)
 - [PHP Tests](./phptests/README.md)

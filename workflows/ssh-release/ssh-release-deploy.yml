@@ -1,0 +1,171 @@
+name: 'SSH Release Deploy'
+
+# Manual only. Builds on the runner, then deploys to an SSH-only environment
+# (for example Nexcess) using the release-directory model provided by
+# moderntribe/actions/deploy/ssh-deploy.
+#
+# The build job installs third-party packages and never sees the SSH secrets;
+# the deploy job only unpacks the build artifact and deploys it.
+#
+# Copy to .github/workflows/ and see ./README.md for setup. Lines marked
+# "PROJECT:" are the ones you will usually need to change.
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        required: true
+        default: Production
+        type: choice
+        options:
+          - Production
+          - Staging
+
+permissions:
+  contents: read
+
+# Deploys and rollbacks to the same environment share one group so they can
+# never run at the same time. Never cancel a run that is already in flight.
+concurrency:
+  group: ssh-deploy-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Build-time secrets (for example the 1Password secrets used by composer)
+    # live on the GitHub Environment. The SSH secrets are never referenced in
+    # this job.
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # --- BUILD (PROJECT: replace with your toolchain) ----------------------
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: ./.nvmrc
+          cache: npm
+
+      - name: Build assets
+        run: |
+          npm ci
+          npm run dist
+
+      # Composer runs ON THE RUNNER so vendor/ ships in the release. Nothing is
+      # installed on the server. Uses the composer-install action from Moose
+      # (.github/actions/composer-install) and the 1Password secrets.
+      - name: Install Composer dependencies
+        uses: ./.github/actions/composer-install
+        with:
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+          OP_VAULT: ${{ secrets.OP_VAULT }}
+          OP_ITEM: ${{ secrets.OP_ITEM }}
+
+      # Some install scripts exit 0 even when the WordPress download fails.
+      - name: Verify WordPress core is present
+        run: test -f wp-settings.php
+
+      # PROJECT: only needed with the Redis Object Cache plugin. The drop-in
+      # ships inside the plugin, so copying it here keeps it in step with the
+      # locked plugin version. Remove if the project does not use Redis.
+      - name: Install Redis object cache drop-in
+        run: cp wp-content/plugins/redis-cache/includes/object-cache.php wp-content/object-cache.php
+
+      # Tar keeps symlinks and file modes, which upload-artifact would drop.
+      - name: Package build
+        run: |
+          tar -czf "$RUNNER_TEMP/build.tgz" \
+            --exclude=./.git --exclude=./node_modules --exclude=./auth.json .
+
+      - name: Upload build
+        uses: actions/upload-artifact@v7
+        with:
+          name: build
+          path: ${{ runner.temp }}/build.tgz
+          retention-days: 7
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Scopes the SSH secrets per site and records a tracked deployment.
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Download build
+        uses: actions/download-artifact@v8
+        with:
+          name: build
+
+      - name: Unpack build
+        run: |
+          mkdir site
+          tar -xzf build.tgz -C site
+
+      - name: Deploy over SSH
+        uses: moderntribe/actions/deploy/ssh-deploy@v1.4.0
+        with:
+          ssh-host: ${{ secrets.SSH_HOST }}
+          ssh-user: ${{ secrets.SSH_USER }}
+          ssh-key: ${{ secrets.SSH_KEY }}
+          ssh-port: ${{ secrets.SSH_PORT || '22' }}
+          known-hosts: ${{ vars.SSH_KNOWN_HOSTS }}
+          deploy-path: ${{ secrets.DEPLOY_PATH }}
+          source-dir: site
+          # PROJECT: the job has no checkout, so .deploy/ comes from the artifact.
+          exclude-file: site/.deploy/deploy-exclude.txt
+          keep-releases: 5
+          # After the flip and the cache flush, the runner requests this URL.
+          # Staging fails the deploy on a bad response; Production also rolls
+          # back to the release that was live before. Leave the variable empty
+          # to skip the check.
+          health-check-url: ${{ vars.HEALTH_CHECK_URL }}
+          health-check-on-failure: ${{ inputs.environment == 'Production' && 'rollback' || 'fail' }}
+          # Runs on the server inside the new release before it goes live; a
+          # failure leaves the current release in place.
+          # PROJECT: add whatever proves the release can boot.
+          verify-command: |
+            wp core is-installed
+            test -f wp-content/object-cache.php
+          # After the flip. Skips the flush when Redis is off, and refuses it
+          # unless a prefix and selective flush limit it to this site's keys.
+          # PROJECT: remove or replace if the project does not use Redis.
+          post-deploy-command: |
+            if wp eval 'exit( defined( "WP_REDIS_DISABLED" ) && WP_REDIS_DISABLED ? 0 : 1 );'; then
+              echo "Redis is disabled; skipping cache flush"
+            elif wp eval 'exit( defined( "WP_REDIS_PREFIX" ) && WP_REDIS_PREFIX && defined( "WP_REDIS_SELECTIVE_FLUSH" ) && WP_REDIS_SELECTIVE_FLUSH ? 0 : 1 );'; then
+              wp cache flush
+            else
+              echo "WP_REDIS_PREFIX or WP_REDIS_SELECTIVE_FLUSH is not set; skipping a flush that would clear the whole Redis server" >&2
+              exit 1
+            fi
+          # src is under <deploy-path>/shared, dest is relative to the release root.
+          # PROJECT: list everything that must survive between releases.
+          shared-items: |
+            uploads:wp-content/uploads
+            local-config.php:local-config.php
+          # Seed the persistent shared config from the committed template on the
+          # first deploy only (never overwrites an operator-edited file).
+          # PROJECT: format is <dest under shared>:<template path on the runner>.
+          shared-seeds: |
+            local-config.php:site/.deploy/config/local-config-deployssh.php
+
+  # Separate job so the webhook is never exposed alongside the SSH key.
+  notify:
+    needs: [build, deploy]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Slack Notification
+        uses: moderntribe/actions/utils/slack-message-deploy@v1
+        with:
+          branch: ${{ github.ref_name }}
+          environment: ${{ inputs.environment }}
+          slack_webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+          app_url: ${{ vars.SITE_URL || format('{0}/{1}/actions/runs/{2}', github.server_url, github.repository, github.run_id) }}
+          gha_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          status: ${{ contains(needs.*.result, 'cancelled') && 'cancelled' || contains(needs.*.result, 'failure') && 'failure' || 'success' }}
